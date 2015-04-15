@@ -103,6 +103,7 @@ T20150101073300S ->
 #define LOG_FILETYPE                  FILE*
 #define log_openread(filename,file)   ((*(file) = fopen((filename),"rb")) != NULL)
 #define log_openwrite(filename,file)  ((*(file) = fopen((filename),"wb")) != NULL)
+#define log_openappend(filename,file)  ((*(file) = fopen((filename),"ab")) != NULL)
 #define log_close(file)               (fclose(*(file)) == 0)
 #define log_read(buffer,size,file)    (fgets((buffer),(size),*(file)) != NULL)
 #define log_write(buffer,file)        (fputs((buffer),*(file)) >= 0)
@@ -112,6 +113,19 @@ T20150101073300S ->
 #define LOG_FILEPOS                   fpos_t
 #define log_tell(file,pos)            (fgetpos(*(file), (pos)) == 0)
 #define log_seek(file,pos)            (fsetpos(*(file), (pos)) == 0)
+
+
+#include "stdint.h"
+/* type verification code */
+static union
+{
+    char            int8_t_incorrect[sizeof( int8_t ) == 1];
+    char            uint8_t_incorrect[sizeof( uint8_t ) == 1];
+    char            int16_t_incorrect[sizeof( int16_t ) == 2];
+    char            uint16_t_incorrect[sizeof( uint16_t ) == 2];
+    char            int32_t_incorrect[sizeof( int32_t ) == 4];
+    char            uint32_t_incorrect[sizeof( uint32_t ) == 4];
+};
 
 void test_openlog(void)
 {
@@ -136,7 +150,7 @@ void test_writelogts(void)
 	int ret;
 
     struct tm ts = *localtime(&(time_t){time(NULL)});
-    strftime(timestamp,80,"T%Y%m%d%H%M%SS",&ts);
+    strftime(timestamp,80,"T%Y%m%d%H%M%SS\r\n",&ts);
     puts(timestamp);
 
    if(log_openwrite("file.txt",&fp))
@@ -186,27 +200,86 @@ void test_converthex(void)
 
 }
 
+
+void createentry(char* string, int *dados, int len)
+{
+
+	int dado = 0;
+	do
+	{
+		dado=*dados;
+		char2hex(string,(unsigned char)(dado>>8)&0xFF);
+		char2hex(string+2,(unsigned char)(dado)&0xFF);
+		string+=4;
+		dados++;
+		len--;
+	}while(len > 0);
+
+	*string++='\r';
+	*string++='\n';
+	*string++='\0';
+}
+
 void test_createentry(void)
 {
 
 	int vetor_dados[3]={0x1111,0x2222,0x3333};
 	char string[20];
-	int j=0;
-	int k=0;
-	for(k=0;k<3;k++)
-	{
-		char2hex((char*)&string[j],(unsigned char)(vetor_dados[k]>>8)&0xFF);
-		char2hex((char*)&string[j+2],(unsigned char)(vetor_dados[k])&0xFF);
-		j+=4;
-	}
+
+	createentry(string,vetor_dados,3);
 
 	assert((string[0] == '1') && (string[1]== '1') && (string[2] == '1') && (string[3]== '1') &&
 			(string[0+4] == '2') && (string[1+4]== '2') && (string[2+4] == '2') && (string[3+4]== '2') &&
 			(string[0+2*4] == '3') && (string[1+2*4]== '3') && (string[2+2*4] == '3') && (string[3+2*4]== '3'));
 
 
-
 }
+
+void writeentry(char* string)
+{
+	int ret;
+	LOG_FILETYPE fp;
+
+	if(log_openappend("file.txt",&fp))
+	{
+	   ret = log_write(string,&fp);
+	   (void)log_close(&fp);
+	   assert(ret == 1);
+	}else
+	{
+	   assert(0);
+	}
+}
+
+#include "string.h"
+void test_writeentry(void)
+{
+
+	int vetor_dados[3]={0x1111,0x2222,0x3333};
+	char string[20];
+	char string2[20];
+
+	createentry(string,vetor_dados,3);
+
+	assert((string[0] == '1') && (string[1]== '1') && (string[2] == '1') && (string[3]== '1') &&
+			(string[0+4] == '2') && (string[1+4]== '2') && (string[2+4] == '2') && (string[3+4]== '2') &&
+			(string[0+2*4] == '3') && (string[1+2*4]== '3') && (string[2+2*4] == '3') && (string[3+2*4]== '3'));
+
+	writeentry(string);
+
+	LOG_FILETYPE fp;
+	if(log_openread("file.txt",&fp))
+	{
+		(void)log_read(string2,20,&fp);
+		(void)log_read(string2,20,&fp);
+		assert(strcmp(string,string2) == 0);
+	}
+	else
+	{
+		assert(0);
+	}
+}
+
 
 
 
@@ -220,6 +293,8 @@ int main(void) {
 	test_writelogts();
 	test_converthex();
 	test_createentry();
+	test_writeentry();
+	test_writeentry();
 
 	//test_minini();
 
