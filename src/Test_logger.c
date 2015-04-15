@@ -3,8 +3,7 @@
  Name        : Test_logger.c
  Author      : Carlos H. Barriquello
  Version     :
- Copyright   : Your copyright notice
- Description : Hello World in C, Ansi-style
+ Description : Data logger
  ============================================================================
 
  - Arquivo de log local
@@ -17,14 +16,13 @@ medidor de grandezas elétricas.
 Uma série temporal é um conjunto de dados associados a uma estampa de tempo.
 
 3) As séries são armazenadas no formato ASCII hexadecimal como um conjunto de bytes finalizados
-por um caracter de nova linha (\r\n), correspondendo cada linha a uma entrada de dados com
+por "nova linha e retorno" (\r\n), correspondendo cada linha a uma entrada de dados com
 estampa de tempo.
 
 4) As estampas de tempo podem estar nas entradas de dados, ou serem calculados a partir de uma
 estampa inicial (ex. data e hora da criação do arquivo), quando estiverem separadas por um
-intervalo constante. O formato da estampa é determinada pela versão do log. V00 - com estampas
-incluídas, V01 -  com estampas calculadas a partir da estampa inicial. As configurações são
-guardadas no cabeçalho
+intervalo constante. O formato da estampa é determinada pela versão do log. V00 - com estampas calculadas a partir da estampa inicial. As configurações são
+guardadas no cabeçalho, V01 - com estampas incluídas
 
 5) Cada arquivo inicia com um cabeçalho contendo (3 linhas com até 16 caracteres cada):
 L1: Versao e Monitor ID, Bytes por linha, intervalo, terminador (#)
@@ -95,37 +93,8 @@ T20150101073300S ->
 #include <sys\timeb.h>
 
 #include "minIni.h"
+#include "logger.h"
 
-#ifndef NULL
-#define NULL  (void*)0
-#endif
-
-#define LOG_FILETYPE                  FILE*
-#define log_openread(filename,file)   ((*(file) = fopen((filename),"rb")) != NULL)
-#define log_openwrite(filename,file)  ((*(file) = fopen((filename),"wb")) != NULL)
-#define log_openappend(filename,file)  ((*(file) = fopen((filename),"ab")) != NULL)
-#define log_close(file)               (fclose(*(file)) == 0)
-#define log_read(buffer,size,file)    (fgets((char*)(buffer),(size),*(file)) != NULL)
-#define log_write(buffer,file)        (fputs((char*)(buffer),*(file)) >= 0)
-#define log_rename(source,dest)       (rename((source), (dest)) == 0)
-#define log_remove(filename)          (remove(filename) == 0)
-
-#define LOG_FILEPOS                   fpos_t
-#define log_tell(file,pos)            (fgetpos(*(file), (pos)) == 0)
-#define log_seek(file,pos)            (fsetpos(*(file), (pos)) == 0)
-
-/* type verification code */
-#include "stdint.h"
-
-static union
-{
-    char            int8_t_incorrect[sizeof( int8_t ) == 1];
-    char            uint8_t_incorrect[sizeof( uint8_t ) == 1];
-    char            int16_t_incorrect[sizeof( int16_t ) == 2];
-    char            uint16_t_incorrect[sizeof( uint16_t ) == 2];
-    char            int32_t_incorrect[sizeof( int32_t ) == 4];
-    char            uint32_t_incorrect[sizeof( uint32_t ) == 4];
-};
 
 void test_openlog(void)
 {
@@ -163,30 +132,6 @@ void test_writelogts(void)
    }
 }
 
-char tohex(uint8_t val)
-{
-	if(val>15) val = 15; // saturate
-
-	if(val>9)
-	{
-		return ((val-10) + 'A');
-	}else
-	{
-		return (val + '0');
-	}
-}
-
-void byte2hex(char *ret, uint8_t c)
-{
-	ret[0] = tohex((c>>4)&0x0F);
-	ret[1] = tohex(c&0x0F);
-}
-
-void int2hex(char *ret, uint16_t c)
-{
-	byte2hex(ret,(uint8_t)(c>>8)&0xFF);
-	byte2hex(ret+2,(uint8_t)(c)&0xFF);
-}
 
 void test_converthex(void)
 {
