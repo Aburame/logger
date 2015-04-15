@@ -26,15 +26,15 @@ intervalo constante. O formato da estampa é determinada pela versão do log. V00 
 incluídas, V01 -  com estampas calculadas a partir da estampa inicial. As configurações são
 guardadas no cabeçalho
 
-5) Cada arquivo inicia com um cabeçalho contendo (4 linhas de 16 caracteres cada):
-L1: Versao e Monitor ID, Bytes por linha, intervalo,
+5) Cada arquivo inicia com um cabeçalho contendo (3 linhas com até 16 caracteres cada):
+L1: Versao e Monitor ID, Bytes por linha, intervalo, terminador (#)
 L2: data e hora inicial, flag de sincronização do arquivo,
-L3: contador de entradas (linhas) (2 bytes),
-L4: indice da última linha enviada (2 bytes).
+L3: indice da última linha enviada (2 bytes).
 
+5a) A última linha do arquivo é o contador de entradas (linhas) (2 bytes)
 
 Ex.: .
-V01M00I0030B0080
+V0M00B0080I0030#
 TaaaammddhhmmssN
 0000
 0000
@@ -105,8 +105,8 @@ T20150101073300S ->
 #define log_openwrite(filename,file)  ((*(file) = fopen((filename),"wb")) != NULL)
 #define log_openappend(filename,file)  ((*(file) = fopen((filename),"ab")) != NULL)
 #define log_close(file)               (fclose(*(file)) == 0)
-#define log_read(buffer,size,file)    (fgets((buffer),(size),*(file)) != NULL)
-#define log_write(buffer,file)        (fputs((buffer),*(file)) >= 0)
+#define log_read(buffer,size,file)    (fgets((char*)(buffer),(size),*(file)) != NULL)
+#define log_write(buffer,file)        (fputs((char*)(buffer),*(file)) >= 0)
 #define log_rename(source,dest)       (rename((source), (dest)) == 0)
 #define log_remove(filename)          (remove(filename) == 0)
 
@@ -114,9 +114,9 @@ T20150101073300S ->
 #define log_tell(file,pos)            (fgetpos(*(file), (pos)) == 0)
 #define log_seek(file,pos)            (fsetpos(*(file), (pos)) == 0)
 
-
-#include "stdint.h"
 /* type verification code */
+#include "stdint.h"
+
 static union
 {
     char            int8_t_incorrect[sizeof( int8_t ) == 1];
@@ -139,7 +139,6 @@ void test_openlog(void)
 	   assert(0);
    }
 
-
 }
 
 void test_writelogts(void)
@@ -147,7 +146,7 @@ void test_writelogts(void)
 
 	LOG_FILETYPE fp;
 	char timestamp[80];
-	int ret;
+	uint16_t ret;
 
     struct tm ts = *localtime(&(time_t){time(NULL)});
     strftime(timestamp,80,"T%Y%m%d%H%M%SS\r\n",&ts);
@@ -164,7 +163,7 @@ void test_writelogts(void)
    }
 }
 
-char tohex(char val)
+char tohex(uint8_t val)
 {
 	if(val>15) val = 15; // saturate
 
@@ -176,40 +175,51 @@ char tohex(char val)
 		return (val + '0');
 	}
 }
-void char2hex(char *ret, unsigned char c)
+
+void byte2hex(char *ret, uint8_t c)
 {
 	ret[0] = tohex((c>>4)&0x0F);
 	ret[1] = tohex(c&0x0F);
 }
 
+void int2hex(char *ret, uint16_t c)
+{
+	byte2hex(ret,(uint8_t)(c>>8)&0xFF);
+	byte2hex(ret+2,(uint8_t)(c)&0xFF);
+}
+
 void test_converthex(void)
 {
 
-	char ret[2];
-	char2hex(ret,0xFF);
+	char ret[4];
+	byte2hex(ret,0xFF);
 	assert((ret[0] == 'F') && (ret[1]== 'F'));
 
-	char2hex(ret,0x11);
+	byte2hex(ret,0x11);
 	assert((ret[0] == '1') && (ret[1]== '1'));
 
-	char2hex(ret,0xA0);
+	byte2hex(ret,0xA0);
 	assert((ret[0] == 'A') && (ret[1]== '0'));
 
-	char2hex(ret,0x9E);
+	byte2hex(ret,0x9E);
 	assert((ret[0] == '9') && (ret[1]== 'E'));
 
+	int2hex(ret,0xFF11);
+	assert((ret[0] == 'F') && (ret[1]== 'F') && (ret[2] == '1') && (ret[3]== '1'));
+
+	int2hex(ret,0xA09E);
+	assert((ret[0] == 'A') && (ret[1]== '0') && (ret[2] == '9') && (ret[3]== 'E'));
 }
 
 
-void createentry(char* string, int *dados, int len)
+void createentry(char* string, uint16_t *dados, uint16_t len)
 {
 
-	int dado = 0;
+	uint16_t dado = 0;
 	do
 	{
 		dado=*dados;
-		char2hex(string,(unsigned char)(dado>>8)&0xFF);
-		char2hex(string+2,(unsigned char)(dado)&0xFF);
+		int2hex(string,dado);
 		string+=4;
 		dados++;
 		len--;
@@ -223,7 +233,7 @@ void createentry(char* string, int *dados, int len)
 void test_createentry(void)
 {
 
-	int vetor_dados[3]={0x1111,0x2222,0x3333};
+	uint16_t vetor_dados[3]={0x1111,0x2222,0x3333};
 	char string[20];
 
 	createentry(string,vetor_dados,3);
@@ -237,7 +247,7 @@ void test_createentry(void)
 
 void writeentry(char* string)
 {
-	int ret;
+	uint16_t ret;
 	LOG_FILETYPE fp;
 
 	if(log_openappend("file.txt",&fp))
@@ -255,7 +265,7 @@ void writeentry(char* string)
 void test_writeentry(void)
 {
 
-	int vetor_dados[3]={0x1111,0x2222,0x3333};
+	uint16_t vetor_dados[3]={0x1111,0x2222,0x3333};
 	char string[20];
 	char string2[20];
 
@@ -281,11 +291,9 @@ void test_writeentry(void)
 }
 
 
-
-
 int main(void) {
 	struct timeb start, end;
-	int diff;
+	uint16_t diff;
 
 	ftime(&start);
 
@@ -299,7 +307,7 @@ int main(void) {
 	//test_minini();
 
 	ftime(&end);
-	diff = (int) (1000.0 * (end.time - start.time)
+	diff = (uint16_t) (1000.0 * (end.time - start.time)
 		+ (end.millitm - start.millitm));
 
 	printf("\nOperation took %u milliseconds\n", diff);
