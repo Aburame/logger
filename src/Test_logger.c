@@ -96,6 +96,10 @@ T20150101073300S ->
 
 #include "minIni.h"
 
+#ifndef NULL
+#define NULL  (void*)0
+#endif
+
 #define LOG_FILETYPE                  FILE*
 #define log_openread(filename,file)   ((*(file) = fopen((filename),"rb")) != NULL)
 #define log_openwrite(filename,file)  ((*(file) = fopen((filename),"wb")) != NULL)
