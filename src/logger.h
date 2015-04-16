@@ -17,6 +17,8 @@
 #define NULL  (void*)0
 #endif
 
+#define LITTLE_ENDIAN	1
+
 #define LOG_FILETYPE                  FILE*
 #define log_openread(filename,file)   ((*(file) = fopen((filename),"rb")) != NULL)
 #define log_openwrite(filename,file)  ((*(file) = fopen((filename),"wb")) != NULL)
@@ -74,15 +76,18 @@ typedef struct
 typedef struct
 {
 	log_headerl1_t h1; /* version, id, entry size and time interval */
-	log_headerl1_t h2; /* timestamp and synch flag */
+	log_headerl2_t h2; /* timestamp and synch flag */
 	uint16_t last_idx;	/* index of last sent line */
 	uint16_t count;		/* entries count */
 }log_header_t;
 
+void log_makeheader(char log_header[], log_header_t * h);
 void log_setheader(char* filename, log_header_t * h);
 void log_getheader(char* filename, log_header_t * h);
 
 void byte2hex(char *ret, uint8_t c);
 void int2hex(char *ret, uint16_t c);
+
+void test_hextoint(void);
 
 #endif /* LOGGER_H_ */

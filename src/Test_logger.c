@@ -192,12 +192,18 @@ void test_createentry(void)
 
 void test_setheader(void)
 {
-	log_header_t h;
+	log_header_t h = {{0,0,0,0},{0,0,0,0,0,0,0},0,0};
 	h.h1.version = 0;
 	h.h1.mon_id = 0;
 	h.h1.time_interv = 30;
 	h.h1.entry_size = 32;
 	log_setheader("file.txt", &h);
+}
+
+void test_getheader(void)
+{
+	log_header_t h = {{0,0,0,0},{0,0,0,0,0,0,0},0,0};
+	log_getheader("file.txt", &h);
 }
 
 void writeentry(char* string)
@@ -245,8 +251,6 @@ void test_writeentry(void)
 	}
 }
 
-
-
 int main(void) {
 	struct timeb start, end;
 	uint16_t diff;
@@ -255,6 +259,9 @@ int main(void) {
 
 	test_openlog();
 	test_setheader();
+	test_hextoint();
+	test_getheader();
+
 	/*
 	test_writelogts();
 	test_converthex();
