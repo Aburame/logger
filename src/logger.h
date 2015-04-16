@@ -8,6 +8,8 @@
 #ifndef LOGGER_H_
 #define LOGGER_H_
 
+#include "stdio.h"
+#include "stdlib.h"
 #include "stdint.h"
 #include "time.h"
 
@@ -76,6 +78,9 @@ typedef struct
 	uint16_t last_idx;	/* index of last sent line */
 	uint16_t count;		/* entries count */
 }log_header_t;
+
+void log_setheader(char* filename, log_header_t * h);
+void log_getheader(char* filename, log_header_t * h);
 
 void byte2hex(char *ret, uint8_t c);
 void int2hex(char *ret, uint16_t c);

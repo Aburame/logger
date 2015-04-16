@@ -190,6 +190,16 @@ void test_createentry(void)
 
 }
 
+void test_setheader(void)
+{
+	log_header_t h;
+	h.h1.version = 0;
+	h.h1.mon_id = 0;
+	h.h1.time_interv = 30;
+	h.h1.entry_size = 32;
+	log_setheader("file.txt", &h);
+}
+
 void writeentry(char* string)
 {
 	uint16_t ret;
@@ -236,6 +246,7 @@ void test_writeentry(void)
 }
 
 
+
 int main(void) {
 	struct timeb start, end;
 	uint16_t diff;
@@ -243,11 +254,14 @@ int main(void) {
 	ftime(&start);
 
 	test_openlog();
+	test_setheader();
+	/*
 	test_writelogts();
 	test_converthex();
 	test_createentry();
 	test_writeentry();
 	test_writeentry();
+	*/
 
 	//test_minini();
 
