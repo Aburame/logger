@@ -27,15 +27,14 @@ guardadas no cabeçalho, V01 - com estampas incluídas
 5) Cada arquivo inicia com um cabeçalho contendo (3 linhas com até 16 caracteres cada):
 L1: Versao e Monitor ID, Bytes por linha, intervalo, terminador (#)
 L2: data e hora inicial, flag de sincronização do arquivo,
-L3: indice da última linha enviada (2 bytes).
-
-5a) A última linha do arquivo é o contador de entradas (linhas) (2 bytes)
+L3: indice da última linha enviada (4 bytes).
+L4: contador de entradas (linhas) (4 bytes)
 
 Ex.: .
-V0M00B0080I0030#
-TaaaammddhhmmssN
-0000
-0000
+V00M00B0080I0030\r\n
+TaaaammddhhmmssN\r\n
+P0000\r\n
+C0000\r\n
 00
 01
 02
@@ -100,12 +99,18 @@ void test_openlog(void)
 {
 
    LOG_FILETYPE fp;
-   if(log_openwrite("file.txt",&fp))
+   char* filename = "file.txt";
+
+   if(log_openread(filename,&fp))
    {
 	   (void)log_close(&fp);
    }else
    {
-	   assert(0);
+	   if(log_openwrite(filename,&fp))
+	   {
+		   log_newheader(filename,0,30,12);
+		   (void)log_close(&fp);
+	   }
    }
 
 }
@@ -114,14 +119,14 @@ void test_writelogts(void)
 {
 
 	LOG_FILETYPE fp;
-	char timestamp[80];
+	char timestamp[20];
 	uint16_t ret;
 
     struct tm ts = *localtime(&(time_t){time(NULL)});
     strftime(timestamp,80,"T%Y%m%d%H%M%SS\r\n",&ts);
     puts(timestamp);
 
-   if(log_openwrite("file.txt",&fp))
+   if(log_openread("file.txt",&fp))
    {
 	   ret = log_write(timestamp,&fp);
 	   (void)log_close(&fp);
@@ -133,60 +138,17 @@ void test_writelogts(void)
 }
 
 
-void test_converthex(void)
-{
-
-	char ret[4];
-	byte2hex(ret,0xFF);
-	assert((ret[0] == 'F') && (ret[1]== 'F'));
-
-	byte2hex(ret,0x11);
-	assert((ret[0] == '1') && (ret[1]== '1'));
-
-	byte2hex(ret,0xA0);
-	assert((ret[0] == 'A') && (ret[1]== '0'));
-
-	byte2hex(ret,0x9E);
-	assert((ret[0] == '9') && (ret[1]== 'E'));
-
-	int2hex(ret,0xFF11);
-	assert((ret[0] == 'F') && (ret[1]== 'F') && (ret[2] == '1') && (ret[3]== '1'));
-
-	int2hex(ret,0xA09E);
-	assert((ret[0] == 'A') && (ret[1]== '0') && (ret[2] == '9') && (ret[3]== 'E'));
-}
-
-
-void createentry(char* string, uint16_t *dados, uint16_t len)
-{
-
-	uint16_t dado = 0;
-	do
-	{
-		dado=*dados;
-		int2hex(string,dado);
-		string+=4;
-		dados++;
-		len--;
-	}while(len > 0);
-
-	*string++='\r';
-	*string++='\n';
-	*string++='\0';
-}
-
 void test_createentry(void)
 {
 
 	uint16_t vetor_dados[3]={0x1111,0x2222,0x3333};
 	char string[20];
 
-	createentry(string,vetor_dados,3);
+	log_createentry(string,vetor_dados,3);
 
 	assert((string[0] == '1') && (string[1]== '1') && (string[2] == '1') && (string[3]== '1') &&
 			(string[0+4] == '2') && (string[1+4]== '2') && (string[2+4] == '2') && (string[3+4]== '2') &&
 			(string[0+2*4] == '3') && (string[1+2*4]== '3') && (string[2+2*4] == '3') && (string[3+2*4]== '3'));
-
 
 }
 
@@ -206,21 +168,6 @@ void test_getheader(void)
 	log_getheader("file.txt", &h);
 }
 
-void writeentry(char* string)
-{
-	uint16_t ret;
-	LOG_FILETYPE fp;
-
-	if(log_openappend("file.txt",&fp))
-	{
-	   ret = log_write(string,&fp);
-	   (void)log_close(&fp);
-	   assert(ret == 1);
-	}else
-	{
-	   assert(0);
-	}
-}
 
 #include "string.h"
 void test_writeentry(void)
@@ -230,25 +177,26 @@ void test_writeentry(void)
 	char string[20];
 	char string2[20];
 
-	createentry(string,vetor_dados,3);
+	log_createentry(string,vetor_dados,3);
 
 	assert((string[0] == '1') && (string[1]== '1') && (string[2] == '1') && (string[3]== '1') &&
 			(string[0+4] == '2') && (string[1+4]== '2') && (string[2+4] == '2') && (string[3+4]== '2') &&
 			(string[0+2*4] == '3') && (string[1+2*4]== '3') && (string[2+2*4] == '3') && (string[3+2*4]== '3'));
 
-	writeentry(string);
+	log_writeentry("file.txt",string);
+	log_readentry("file.txt", string2);
 
-	LOG_FILETYPE fp;
-	if(log_openread("file.txt",&fp))
-	{
-		(void)log_read(string2,20,&fp);
-		(void)log_read(string2,20,&fp);
-		assert(strcmp(string,string2) == 0);
-	}
-	else
-	{
-		assert(0);
-	}
+	assert(strcmp(string,string2) == 0);
+
+}
+
+void test_readentry(void)
+{
+
+	char string[20];
+	log_readentry("file.txt", string);
+	puts(string);
+
 }
 
 int main(void) {
@@ -257,11 +205,13 @@ int main(void) {
 
 	ftime(&start);
 
+	test_logger();
 	test_openlog();
-	test_setheader();
-	test_hextoint();
-	test_getheader();
-
+	//test_setheader();
+	//test_getheader();
+	//test_createentry();
+	test_writeentry();
+	test_readentry();
 	/*
 	test_writelogts();
 	test_converthex();

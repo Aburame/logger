@@ -17,12 +17,10 @@
 #define NULL  (void*)0
 #endif
 
-#define LITTLE_ENDIAN	1
-
 #define LOG_FILETYPE                  FILE*
-#define log_openread(filename,file)   ((*(file) = fopen((filename),"rb")) != NULL)
+#define log_openread(filename,file)   ((*(file) = fopen((filename),"rb+")) != NULL)
 #define log_openwrite(filename,file)  ((*(file) = fopen((filename),"wb")) != NULL)
-#define log_openappend(filename,file)  ((*(file) = fopen((filename),"ab")) != NULL)
+#define log_openappend(filename,file)  ((*(file) = fopen((filename),"ab+")) != NULL)
 #define log_close(file)               (fclose(*(file)) == 0)
 #define log_read(buffer,size,file)    (fgets((char*)(buffer),(size),*(file)) != NULL)
 #define log_write(buffer,file)        (fputs((char*)(buffer),*(file)) >= 0)
@@ -30,8 +28,10 @@
 #define log_remove(filename)          (remove(filename) == 0)
 
 #define LOG_FILEPOS                   fpos_t
-#define log_tell(file,pos)            (fgetpos(*(file), (pos)) == 0)
-#define log_seek(file,pos)            (fsetpos(*(file), (pos)) == 0)
+#define log_tell(file,pos)            ((*(pos) = ftell(*(file))) != (-1L)) //(fgetpos(*(file), (pos)) == 0)
+#define log_seek(file,pos)            (fseek(*(file), *(pos), SEEK_SET) == 0) // (fsetpos(*(file), (pos)) == 0)
+
+#define LOG_HEADER_LEN	50
 
 /* type verification code */
 static union
@@ -84,10 +84,15 @@ typedef struct
 void log_makeheader(char log_header[], log_header_t * h);
 void log_setheader(char* filename, log_header_t * h);
 void log_getheader(char* filename, log_header_t * h);
+void log_createentry(char* string, uint16_t *dados, uint16_t len);
+void log_newheader(char* filename, uint8_t monitor_id, uint16_t interval, uint16_t entry_size);
+
+void log_writeentry(char* filename, char* entry);
+void log_readentry(char* filename, char* entry);
 
 void byte2hex(char *ret, uint8_t c);
 void int2hex(char *ret, uint16_t c);
 
-void test_hextoint(void);
+void test_logger(void);
 
 #endif /* LOGGER_H_ */
