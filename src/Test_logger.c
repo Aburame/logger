@@ -207,17 +207,17 @@ int main(void) {
 
 	test_logger();
 	test_openlog();
+
 	//test_setheader();
 	//test_getheader();
 	//test_createentry();
+
 	test_writeentry();
 	test_readentry();
+
+
 	/*
 	test_writelogts();
-	test_converthex();
-	test_createentry();
-	test_writeentry();
-	test_writeentry();
 	*/
 
 	//test_minini();
