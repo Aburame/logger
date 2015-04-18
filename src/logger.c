@@ -271,7 +271,7 @@ void log_writeentry(char* filename, char* entry)
 	}
 }
 
-void log_readentry(char* filename, char* entry)
+uint8_t log_readentry(char* filename, char* entry)
 {
 	uint8_t entry_size;
 	LOG_FILETYPE fp;
@@ -282,21 +282,24 @@ void log_readentry(char* filename, char* entry)
 
 	entry_size = (h.h1.entry_size) + 2; // inclui \r\n
 
-	if(log_openread(filename,&fp))
+	if(h.last_idx < h.count)
 	{
-	    pos = pos + (h.last_idx)*entry_size;
+		if(log_openread(filename,&fp))
+		{
+			pos = pos + (h.last_idx)*entry_size;
 
-	    if(log_seek(&fp,&pos))
-	    {
-		   (void)log_read(entry,entry_size+2,&fp);
-		   (void)log_close(&fp);
+			if(log_seek(&fp,&pos))
+			{
+			   (void)log_read(entry,entry_size+2,&fp);
+			   (void)log_close(&fp);
 
-		   h.last_idx++; // incrementa indice da última entrada lida
-		   log_setheader(filename, &h);
-	    }
-	}else
-	{
-	   assert(0);
+			   h.last_idx++; // incrementa indice da última entrada lida
+			   log_setheader(filename, &h);
+
+			   return h.last_idx;
+			}
+		}
 	}
+	return 0;
 }
 

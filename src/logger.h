@@ -88,7 +88,7 @@ void log_createentry(char* string, uint16_t *dados, uint16_t len);
 void log_newheader(char* filename, uint8_t monitor_id, uint16_t interval, uint16_t entry_size);
 
 void log_writeentry(char* filename, char* entry);
-void log_readentry(char* filename, char* entry);
+uint8_t log_readentry(char* filename, char* entry);
 
 void byte2hex(char *ret, uint8_t c);
 void int2hex(char *ret, uint16_t c);

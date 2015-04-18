@@ -184,9 +184,11 @@ void test_writeentry(void)
 			(string[0+2*4] == '3') && (string[1+2*4]== '3') && (string[2+2*4] == '3') && (string[3+2*4]== '3'));
 
 	log_writeentry("file.txt",string);
-	log_readentry("file.txt", string2);
-
-	assert(strcmp(string,string2) == 0);
+	if(log_readentry("file.txt", string2) > 0)
+	{
+		assert(strcmp(string,string2) == 0);
+		puts(string2);
+	}
 
 }
 
@@ -194,8 +196,11 @@ void test_readentry(void)
 {
 
 	char string[20];
-	log_readentry("file.txt", string);
-	puts(string);
+	if(log_readentry("file.txt", string) > 0)
+	{
+		puts(string);
+	}
+
 
 }
 
