@@ -25,7 +25,7 @@ intervalo constante. O formato da estampa é determinada pela versão do log. V00 
 guardadas no cabeçalho, V01 - com estampas incluídas
 
 5) Cada arquivo inicia com um cabeçalho contendo (3 linhas com até 16 caracteres cada):
-L1: Versao e Monitor ID, Bytes por linha, intervalo, terminador (#)
+L1: Versao e Monitor ID, Bytes por linha e intervalo entre medições.
 L2: data e hora inicial, flag de sincronização do arquivo,
 L3: indice da última linha enviada (4 bytes).
 L4: contador de entradas (linhas) (4 bytes)
@@ -200,8 +200,6 @@ void test_readentry(void)
 	{
 		puts(string);
 	}
-
-
 }
 
 int main(void) {

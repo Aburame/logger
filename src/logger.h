@@ -32,6 +32,7 @@
 #define log_seek(file,pos)            (fseek(*(file), *(pos), SEEK_SET) == 0) // (fsetpos(*(file), (pos)) == 0)
 
 #define LOG_HEADER_LEN	50
+#define LOG_MAX_ENTRY_SIZE  256
 
 /* type verification code */
 static union
@@ -53,6 +54,13 @@ typedef struct
 	uint8_t	min;	/* Minutes: 0-59 */
 	uint8_t	sec;	/* Seconds: 0-59 */
 }timestamp_t;
+
+typedef struct
+{
+	timestamp_t ts; /* entry timestamp */
+	uint8_t size; /* size of entry in number of bytes, must be not greater than LOG_MAX_ENTRY_SIZE */
+	uint8_t *values; /* pointer to 8-bit entry values */
+}log_entry_t;
 
 typedef struct
 {
@@ -84,9 +92,9 @@ typedef struct
 void log_makeheader(char log_header[], log_header_t * h);
 void log_setheader(char* filename, log_header_t * h);
 void log_getheader(char* filename, log_header_t * h);
-void log_createentry(char* string, uint16_t *dados, uint16_t len);
 void log_newheader(char* filename, uint8_t monitor_id, uint16_t interval, uint16_t entry_size);
 
+void log_createentry(char* string, uint16_t *dados, uint16_t len);
 void log_writeentry(char* filename, char* entry);
 uint8_t log_readentry(char* filename, char* entry);
 
