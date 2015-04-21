@@ -175,7 +175,6 @@ void test_writeentry(void)
 
 	uint16_t vetor_dados[3]={0x1111,0x2222,0x3333};
 	char string[20];
-	char string2[20];
 
 	log_createentry(string,vetor_dados,3);
 
@@ -184,39 +183,107 @@ void test_writeentry(void)
 			(string[0+2*4] == '3') && (string[1+2*4]== '3') && (string[2+2*4] == '3') && (string[3+2*4]== '3'));
 
 	log_writeentry("file.txt",string);
+
+#if 0
+	char string2[20];
 	if(log_readentry("file.txt", string2) > 0)
 	{
 		assert(strcmp(string,string2) == 0);
 		puts(string2);
 	}
+#else
+	puts("Entry written\r\n");
+#endif
 
 }
 
 void test_readentry(void)
 {
-
-	char string[20];
-	if(log_readentry("file.txt", string) > 0)
+	log_entry_t entry;
+	uint8_t string[20];
+	entry.values = string;
+	if(log_readentry("file.txt", &entry) > 0)
 	{
-		puts(string);
+		puts((char*)entry.values);
 	}
+}
+
+void wait (unsigned int secs) {
+	unsigned int retTime = time(0) + secs;     // Get finishing time.
+    while (time(0) < retTime);    // Loop until it arrives.
+}
+
+
+#include "conio.h"
+char getchar_timeout(int timeout)
+{
+
+   int timer = 0 ;
+   while(!kbhit() && timeout > timer)
+   {
+      wait(1);
+      timer++;
+   }
+
+   if(kbhit())
+   {
+      return(getch());
+   }
+   else
+   {
+      return(0);
+   }
 }
 
 int main(void) {
 	struct timeb start, end;
 	uint16_t diff;
 
+	uint8_t log_running = 1;
+
+	puts("help:\r\nq-quit\r\np-stop\r\nc-continue\r\ns-synch\r\n");
+
 	ftime(&start);
 
 	test_logger();
 	test_openlog();
 
+	//log_settimestamp("file.txt"); // sincronizar
+
 	//test_setheader();
 	//test_getheader();
 	//test_createentry();
 
-	test_writeentry();
+	//getchar_timeout(5);
+
+#if 1
+	while(1)
+	{
+		char c;
+
+		if(log_running)
+		{
+			test_writeentry();
+		}
+
+		c=getchar_timeout(5);
+
+		switch(c)
+		{
+			case 'q': // parar
+				goto out;
+			case 's': log_settimestamp("file.txt"); // sincronizar
+					break;
+			case 'c': log_running = 1; // iniciar
+				break;
+			case 'p': log_running = 0; // parar
+				break;
+		}
+	}
+
+	out:
 	test_readentry();
+
 
 
 	/*
@@ -224,6 +291,7 @@ int main(void) {
 	*/
 
 	//test_minini();
+#endif
 
 	ftime(&end);
 	diff = (uint16_t) (1000.0 * (end.time - start.time)

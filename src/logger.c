@@ -20,6 +20,12 @@ static char tohex(uint8_t val)
 	}
 }
 
+static char tobcd(uint8_t val)
+{
+	if(val>9) val = 9;
+	return (val + '0');
+}
+
 void byte2hex(char *ret, uint8_t c)
 {
 	ret[0] = tohex((c>>4)&0x0F);
@@ -30,6 +36,14 @@ void int2hex(char *ret, uint16_t c)
 {
 	byte2hex(ret,(uint8_t)(c>>8)&0xFF);
 	byte2hex(ret+2,(uint8_t)(c)&0xFF);
+}
+
+void u8tobcd(char *ret, uint8_t c)
+{
+	while(c>100){c-=100;} // keep below 99
+	uint8_t d = (c/10);
+	ret[0] = tobcd(d);
+	ret[1] = tobcd(c-d*10);
 }
 
 void log_createentry(char* string, uint16_t *dados, uint16_t len)
@@ -152,11 +166,22 @@ void test_inttohex(void)
 	assert((ret[0] == 'A') && (ret[1]== '0') && (ret[2] == '9') && (ret[3]== 'E'));
 }
 
+void test_u8tobcd(void)
+{
+	char ret[4];
+
+	u8tobcd(ret,99);
+	assert((ret[0] == '9') && (ret[1]== '9'));
+
+	u8tobcd(ret,13);
+	assert((ret[0] == '1') && (ret[1]== '3'));
+}
 
 void test_logger(void)
 {
 	test_hextoint();
 	test_inttohex();
+	test_u8tobcd();
 }
 
 void log_getheader(char* filename, log_header_t * h)
@@ -248,6 +273,51 @@ void log_newheader(char* filename, uint8_t monitor_id, uint16_t interval, uint16
 	log_setheader(filename, &h);
 }
 
+void log_gettimestamp(char* timestamp)
+{
+	struct tm ts = *localtime(&(time_t){time(NULL)});
+    strftime(timestamp,20,"T%Y%m%d%H%M%SS\r\n",&ts);
+}
+
+void log_settimestamp(char* filename)
+{
+	uint32_t time_elapsed_s = 0;
+	time_t time_now = time(NULL);
+	struct tm ts;
+	log_header_t h = {{0,0,0,0},{0,0,0,0,0,0,0},0,0};
+	log_getheader(filename, &h);
+	time_elapsed_s = (h.h1.time_interv)*(h.count);
+	time_now = time_now - time_elapsed_s;
+	ts = *localtime(&(time_t){time_now});
+
+#if 1
+	h.h2.year = (uint16_t)(ts.tm_year + 1900);
+	h.h2.mon = (uint8_t)(ts.tm_mon + 1);
+	h.h2.mday = (uint8_t)ts.tm_mday;
+	h.h2.hour = (uint8_t)ts.tm_hour;
+	h.h2.min = (uint8_t)ts.tm_min;
+	h.h2.sec = (uint8_t)ts.tm_sec;
+#else
+	h.h2.year = (uint16_t)2015;
+	h.h2.mon = (uint8_t)04;
+	h.h2.mday = (uint8_t)21;
+	h.h2.hour = (uint8_t)18;
+	h.h2.min = (uint8_t)10;
+	h.h2.sec = (uint8_t)33;
+	printf("\r\n%d%d%d%d%d%d\r\n", h.h2.year,h.h2.mon,h.h2.mday,h.h2.hour,h.h2.min,h.h2.sec);
+#endif
+	h.h2.synched = 1;
+
+	do
+	{
+		char timestamp[20];
+		strftime(timestamp,20,"T%Y%m%d%H%M%SS\r\n",&ts);
+		puts(timestamp);
+	}while(0);
+
+	log_setheader(filename, &h);
+}
+
 void log_writeentry(char* filename, char* entry)
 {
 	uint16_t ret;
@@ -271,11 +341,13 @@ void log_writeentry(char* filename, char* entry)
 	}
 }
 
-uint8_t log_readentry(char* filename, char* entry)
+uint8_t log_readentry(char* filename, log_entry_t* entry)
 {
 	uint8_t entry_size;
 	LOG_FILETYPE fp;
 	LOG_FILEPOS  pos = LOG_HEADER_LEN;
+
+	struct tm ts;
 
 	log_header_t h = {{0,0,0,0},{0,0,0,0,0,0,0},0,0};
 	log_getheader(filename, &h);
@@ -284,13 +356,29 @@ uint8_t log_readentry(char* filename, char* entry)
 
 	if(h.last_idx < h.count)
 	{
+		ts.tm_year = h.h2.year - 1900;
+		ts.tm_mon = h.h2.mon - 1;
+		ts.tm_mday = h.h2.mday;
+		ts.tm_hour = h.h2.hour;
+		ts.tm_min = h.h2.min;
+		ts.tm_sec = h.h2.sec;
+		ts.tm_isdst = -1;
+
+		time_t unix_time = mktime(&ts);
+
+		if(unix_time > 0)
+		{
+			unix_time += (h.last_idx)*(h.h1.time_interv);
+			entry->ts = unix_time;
+		}
+
 		if(log_openread(filename,&fp))
 		{
 			pos = pos + (h.last_idx)*entry_size;
 
 			if(log_seek(&fp,&pos))
 			{
-			   (void)log_read(entry,entry_size+2,&fp);
+			   (void)log_read(entry->values,entry_size+2,&fp);
 			   (void)log_close(&fp);
 
 			   h.last_idx++; // incrementa indice da última entrada lida

@@ -57,7 +57,7 @@ typedef struct
 
 typedef struct
 {
-	timestamp_t ts; /* entry timestamp */
+	time_t ts; /* entry timestamp - unix time */
 	uint8_t size; /* size of entry in number of bytes, must be not greater than LOG_MAX_ENTRY_SIZE */
 	uint8_t *values; /* pointer to 8-bit entry values */
 }log_entry_t;
@@ -96,7 +96,9 @@ void log_newheader(char* filename, uint8_t monitor_id, uint16_t interval, uint16
 
 void log_createentry(char* string, uint16_t *dados, uint16_t len);
 void log_writeentry(char* filename, char* entry);
-uint8_t log_readentry(char* filename, char* entry);
+uint8_t log_readentry(char* filename, log_entry_t* entry);
+void log_gettimestamp(char* timestamp);
+void log_settimestamp(char* filename);
 
 void byte2hex(char *ret, uint8_t c);
 void int2hex(char *ret, uint16_t c);
