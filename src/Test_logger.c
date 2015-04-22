@@ -94,6 +94,8 @@ T20150101073300S ->
 #include "minIni.h"
 #include "logger.h"
 
+uint8_t http_send_data(uint8_t *data, uint8_t len);
+
 
 void test_openlog(void)
 {
@@ -244,6 +246,9 @@ int main(void) {
 
 	uint8_t log_running = 1;
 
+	http_send_data(NULL,0);
+	getchar();
+
 	puts("help:\r\nq-quit\r\np-stop\r\nc-continue\r\ns-synch\r\n");
 
 	ftime(&start);
@@ -302,4 +307,127 @@ int main(void) {
 
 	getchar();
 	return EXIT_SUCCESS;
+
 }
+
+#include <string.h> /* memcpy, memset */
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
+uint8_t http_send_data(uint8_t *data, uint8_t len)
+{
+
+	//SOCKET u_sock=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
+
+	WSADATA wsa;
+	SOCKET s;
+	struct sockaddr_in server;
+	char *message, server_reply[2000];
+	int recv_size;
+
+	printf("\nInitialising Winsock...");
+	if (WSAStartup(MAKEWORD(2,2),&wsa) != 0)
+	{
+		printf("Failed. Error Code : %d",WSAGetLastError());
+		return 1;
+	}
+
+	printf("Initialised.\n");
+
+	//Create a socket
+	if((s = socket(AF_INET , SOCK_STREAM , 0 )) == INVALID_SOCKET)
+	{
+		printf("Could not create socket : %d" , WSAGetLastError());
+	}
+
+	printf("Socket created.\n");
+
+
+	//server.sin_addr.s_addr = inet_addr("127.0.0.1");
+	server.sin_addr.s_addr = inet_addr("200.132.39.118");
+	server.sin_family = AF_INET;
+	server.sin_port = htons(80);
+
+	//Connect to remote server
+	if (connect(s , (struct sockaddr *)&server , sizeof(server)) < 0)
+	{
+		puts("connect error");
+		return 1;
+	}
+
+	puts("Connected");
+
+	//Send some data
+	message = "GET / HTTP/1.1\r\n\r\n";
+	if( send(s , message , strlen(message) , 0) < 0)
+	{
+		puts("Send failed");
+		return 1;
+	}
+	puts("Data Send\n");
+
+	//Receive a reply from the server
+	if((recv_size = recv(s , server_reply , 2000 , 0)) == SOCKET_ERROR)
+	{
+		puts("recv failed");
+	}
+
+	puts("Reply received\n");
+
+	//Add a NULL terminating character to make it a proper string before printing
+	server_reply[recv_size] = '\0';
+	puts(server_reply);
+
+	return 0;
+}
+
+#if 0
+/*
+    Get IP address from domain name
+*/
+
+#include<stdio.h>
+#include<winsock2.h>
+
+#pragma comment(lib,"ws2_32.lib") //Winsock Library
+
+int main(int argc , char *argv[])
+{
+    WSADATA wsa;
+    char *hostname = "www.google.com";
+    char ip[100];
+    struct hostent *he;
+    struct in_addr **addr_list;
+    int i;
+
+    printf("\nInitialising Winsock...");
+    if (WSAStartup(MAKEWORD(2,2),&wsa) != 0)
+    {
+        printf("Failed. Error Code : %d",WSAGetLastError());
+        return 1;
+    }
+
+    printf("Initialised.\n");
+
+
+    if ( (he = gethostbyname( hostname ) ) == NULL)
+    {
+        //gethostbyname failed
+        printf("gethostbyname failed : %d" , WSAGetLastError());
+        return 1;
+    }
+
+    //Cast the h_addr_list to in_addr , since h_addr_list also has the ip address in long format only
+    addr_list = (struct in_addr **) he->h_addr_list;
+
+    for(i = 0; addr_list[i] != NULL; i++)
+    {
+        //Return the first one;
+        strcpy(ip , inet_ntoa(*addr_list[i]) );
+    }
+
+    printf("%s resolved to : %s\n" , hostname , ip);
+    return 0;
+    return 0;
+}
+#endif
