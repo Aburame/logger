@@ -238,6 +238,9 @@ char getchar_timeout(int timeout)
 int main(void) {
 	struct timeb start, end;
 	uint16_t diff;
+	const char* log_filename = "file.txt";
+
+	log_header_t h;
 
 	uint8_t log_running = 1;
 
@@ -248,13 +251,11 @@ int main(void) {
 	test_logger();
 	test_openlog();
 
-	//log_settimestamp("file.txt"); // sincronizar
+	log_getheader((char*)log_filename,&h);
 
 	//test_setheader();
 	//test_getheader();
 	//test_createentry();
-
-	//getchar_timeout(5);
 
 #if 1
 	while(1)
@@ -266,13 +267,13 @@ int main(void) {
 			test_writeentry();
 		}
 
-		c=getchar_timeout(5);
+		c=getchar_timeout(h.h1.time_interv);
 
 		switch(c)
 		{
 			case 'q': // parar
 				goto out;
-			case 's': log_settimestamp("file.txt"); // sincronizar
+			case 's': log_settimestamp((char*)log_filename); // sincronizar
 					break;
 			case 'c': log_running = 1; // iniciar
 				break;
